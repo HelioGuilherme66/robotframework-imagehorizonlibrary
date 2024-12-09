@@ -6,6 +6,11 @@ This Robot Framework library provides the facilities to automate GUIs based on
 image recognition similar to Sikuli. This library wraps pyautogui_ to achieve
 this.
 
+For non pixel perfect matches, there is a feature called `confidence level`
+that comes with a dependency OpenCV (python package: `opencv-python`).
+This functionality is optional - you are not required to
+install `opencv-python` package if you do not use confidence level.
+
 Keyword documentation
 ---------------------
 
@@ -28,13 +33,10 @@ __ https://travis-ci.org/Eficode/robotframework-imagehorizonlibrary/
 Prerequisites
 -------------
 
-- `Python 2.7+`_ (unfortunately not 3.x)
+- `Python 3.x`
 - pip_ for easy installation
 - pyautogui_ and `it's prerequisites`_
 - `Robot Framework`_
-
-On OS X, Retina display might `double all coordinates`_ from what they are
-suppose to be. Unfortunately you need to work around this problem yourself.
 
 On Ubuntu, you need to take `special measures`_ to make the screenshot
 functionality to work correctly. The keyboard functions might not work on
@@ -50,12 +52,10 @@ __ http://www.voidspace.org.uk/python/mock/
 Installation
 ------------
 
-If you have pip_, installation is straightforward, although you need to
-explicitly install pillow first:
+If you have pip_, installation is straightforward:
 
 ::
 
-    $ pip install pillow==2.9.0
     $ pip install robotframework-imagehorizonlibrary
 
 This will automatically install dependencies as well as their dependencies.
@@ -69,6 +69,9 @@ commands above to install it.
 
 OSX
 '''
+
+*NOTICE*
+ImageHorizonLibrary does not currently work with XCode v.8. Please use a previous version.
 
 You additionally need to install these for pyautogui_:
 
@@ -87,7 +90,6 @@ You additionally need to install these for pyautogui_:
 ::
 
     $ sudo apt-get install python-dev python-xlib
-    $ sudo pip install pillow
 
 
 You might also need, depending on your Python distribution, to install:
@@ -102,25 +104,49 @@ virtual environment for pyautogui_:
 - `Fetch the source distribution`_
 - Install with:
 
-  ::
+::
 
-        $ pip install python-xlib-<latest version>.tar.gz
+    $ pip install python-xlib-<latest version>.tar.gz
 
-Running tests
--------------
+Running unit tests
+------------------
 
 ::
 
     $ python tests/utest/run_tests.py [verbosity=2]
 
-and
+
+Running acceptance tests
+------------------------
+
+Additionally to unit test dependencies, you also need OpenCV, Eel, scrot and Chrome/Chromium browser.
+OpenCV is used because this tests are testing also confidence level.
+Browser is used by Eel for cross-platform GUI demo application.
+scrot is used for capturing screenshots.
+
+::
+
+    $ pip install opencv-python eel
+
+
+To run tests, run this command:
 
 ::
 
     $ python tests/atest/run_tests.py
 
 
-.. _Python 2.7+: http://python.org
+Updating Docs
+-------------
+
+To regenerate documentation (`doc/ImageHorizonLibrary.html`), use this command:
+
+::
+
+    $ python -m robot.libdoc -P ./src ImageHorizonLibrary doc/ImageHorizonLibrary.html
+
+
+.. _Python 3.x: http://python.org
 .. _pip: https://pypi.python.org/pypi/pip
 .. _pyautogui: https://github.com/asweigart/pyautogui
 .. _it's prerequisites: https://pyautogui.readthedocs.org/en/latest/install.html

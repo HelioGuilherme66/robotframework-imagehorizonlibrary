@@ -2,7 +2,7 @@
 from collections import OrderedDict
 from contextlib import contextmanager
 
-from errors import *    # import errors before checking dependencies!
+from .errors import *    # import errors before checking dependencies!
 
 try:
     import pyautogui as ag
@@ -18,17 +18,17 @@ except ImportError:
                                    'Robot Framework or it is not installed.')
 
 try:
-    from Tkinter import Tk as TK
+    from tkinter import Tk as TK
 except ImportError:
     raise ImageHorizonLibraryError('There is either something wrong with '
                                    'Tkinter or you are running this on Java, '
                                    'which is not a supported platform. Please '
                                    'use Python and verify that Tkinter works.')
 
-import utils
-from interaction import *
-from recognition import *
-from version import VERSION
+from . import utils
+from .interaction import *
+from .recognition import *
+from .version import VERSION
 
 __version__ = VERSION
 
@@ -44,12 +44,31 @@ class ImageHorizonLibrary(_Keyboard,
     facilities to recognize images on screen. It can also take screenshots in
     case of failure or otherwise.
 
+
     This library is built on top of
     [https://pyautogui.readthedocs.org|pyautogui].
 
+    == Confidence Level ==
+    By default, image recognition searches images with pixel-perfect matching.
+    This is in many scenarios too precise, as changing desktop background,
+    transpareny in the reference images, slightly changing resolutions, and
+    myriad of factors might throw the algorithm off. In these cases, it is
+    advised to adjust the precision manually.
+
+    This ability to adjust can be enabled by installing
+    [https://pypi.org/project/opencv-python|opencv-python] Python package
+    separately:
+
+    | $ pip install opencv-python
+
+    After installation, the library will use OpenCV, which enables setting the
+    precision during `library importing` and during the test case  with keyword
+    `Set Confidence`.
+
+
     = Reference image names =
     ``reference_image`` parameter can be either a single file, or a folder.
-    If ``reference_image`` is a folder, image recognition is tried separately 
+    If ``reference_image`` is a folder, image recognition is tried separately
     for each image in that folder, in alphabetical order until a match is found.
 
     For ease of use, reference image names are automatically normalized
@@ -71,9 +90,8 @@ class ImageHorizonLibrary(_Keyboard,
     data:
 
     | `Import Library` | ImageHorizonLibrary                   | reference_folder=images |                                                            |
-    | `Click Image`    | popup Window title                    |                         | # Path is images/popup_window_title.png                    | 
-    | `Click Image`    | button Login Without User Credentials |                         | # Path is images/button_login_without_user_credentials.png | 
-
+    | `Click Image`    | popup Window title                    |                         | # Path is images/popup_window_title.png                    |
+    | `Click Image`    | button Login Without User Credentials |                         | # Path is images/button_login_without_user_credentials.png |
 
     = Performance =
 
@@ -88,7 +106,7 @@ class ImageHorizonLibrary(_Keyboard,
     In the above example, same image is located twice. Below is an example how
     we can leverage the returned location:
 
-    | ${location}=           | `Wait For`  | label Name | 
+    | ${location}=           | `Wait For`  | label Name |
     | `Click To The Left Of` | ${location} | 200        |
     '''
 
@@ -96,7 +114,8 @@ class ImageHorizonLibrary(_Keyboard,
     ROBOT_LIBRARY_VERSION = VERSION
 
     def __init__(self, reference_folder=None, screenshot_folder=None,
-                 keyword_on_failure='ImageHorizonLibrary.Take A Screenshot'):
+                 keyword_on_failure='ImageHorizonLibrary.Take A Screenshot',
+                 confidence=None):
         '''ImageHorizonLibrary can be imported with several options.
 
         ``reference_folder`` is path to the folder where all reference images
@@ -111,6 +130,11 @@ class ImageHorizonLibrary(_Keyboard,
         ``keyword_on_failure`` is the keyword to be run, when location-related
         keywords fail. If you wish to not take screenshots, use for example
         `BuiltIn.No Operation`. Keyword must however be a valid keyword.
+
+        ``confidence`` provides a tolerance for the ``reference_image``.
+                       It can be used if python-opencv is installed and
+                       is given as number between 0 and 1. Not used
+                       by default.
         '''
 
         self.reference_folder = reference_folder
@@ -121,6 +145,9 @@ class ImageHorizonLibrary(_Keyboard,
         self.is_windows = utils.is_windows()
         self.is_mac = utils.is_mac()
         self.is_linux = utils.is_linux()
+        self.has_retina = utils.has_retina()
+        self.has_cv = utils.has_cv()
+        self.confidence = confidence
 
     def _get_location(self, direction, location, offset):
         x, y = location
@@ -155,7 +182,7 @@ class ImageHorizonLibrary(_Keyboard,
         ag.click(x, y, clicks=clicks, button=button, interval=interval)
 
     def _convert_to_valid_special_key(self, key):
-        key = unicode(key).lower()
+        key = str(key).lower()
         if key.startswith('key.'):
             key = key.split('key.', 1)[1]
         elif len(key) > 1:
@@ -231,3 +258,26 @@ class ImageHorizonLibrary(_Keyboard,
         See `library importing` for more specific information.
         '''
         self.screenshot_folder = screenshot_folder_path
+
+    def set_confidence(self, new_confidence):
+        '''Sets the accuracy when finding images.
+
+        ``new_confidence`` is a decimal number between 0 and 1 inclusive.
+
+        See `Confidence level` about additional dependencies that needs to be
+        installed before this keyword has any effect.
+        '''
+        if new_confidence is not None:
+            try:
+                new_confidence = float(new_confidence)
+                if not 1 >= new_confidence >= 0:
+                    LOGGER.warn('Unable to set confidence to {}. Value '
+                                'must be between 0 and 1, inclusive.'
+                                .format(new_confidence))
+                else:
+                    self.confidence = new_confidence
+            except TypeError as err:
+                LOGGER.warn("Can't set confidence to {}".format(new_confidence))
+        else:
+            self.confidence = None
+
